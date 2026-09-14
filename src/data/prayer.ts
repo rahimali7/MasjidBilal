@@ -132,6 +132,13 @@ export const mohid = {
    *
    * Read server-side by /api/prayer-times — never fetched straight from the
    * browser, which CORS would usually block.
+   *
+   * VERIFIED 2026-09-14: this endpoint answers HTTP 200 with an empty array,
+   * `[]`. It is reachable and it is not erroring — it simply carries no
+   * timetable. Nothing in the parser can change that; the masjid has to
+   * publish its timetable to this feed in MOHID before it will return data.
+   * Until then /api/prayer-times reports "unrecognised-shape" and the page
+   * falls back to calculated times, which is the correct behaviour.
    */
   feedUrl:
     "https://us.mohid.co/ky/louisville/masjidbilalsouthside/masjid/widget/api/index/?m=vfrlist/json",
