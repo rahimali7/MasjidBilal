@@ -22,6 +22,11 @@ const TIERS = [25, 50, 100, 250, 500, 1000];
  */
 const FALLBACK_FUNDS = ["General donation", "Zakat", "Sadaqah"] as const;
 
+/** "a, b and c" — Intl handles the comma and conjunction placement. */
+function formatList(items: readonly string[]): string {
+  return new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(items);
+}
+
 /**
  * Builds a Zelle payment instruction from the visitor's selections.
  *
@@ -40,6 +45,24 @@ export function DonatePanel() {
   // The masjid's own categories when MOHID answers, generic ones otherwise.
   const fundOptions: readonly string[] =
     online.status === "ready" ? online.categories.map((c) => c.name) : FALLBACK_FUNDS;
+
+  /**
+   * Whether the categories are genuinely separate destinations.
+   *
+   * MOHID currently returns the same donation URL for every category — it
+   * names the funds without deep-linking to them. Rendering three buttons
+   * that all land on the same page would imply a choice the links do not
+   * actually make, and that matters most for the one category where it is not
+   * merely cosmetic: someone choosing Zakah expects their gift designated as
+   * zakat. One honest button, with the funds named as text, beats three
+   * buttons making a promise the URLs do not keep.
+   *
+   * If MOHID starts returning per-category links, the separate buttons come
+   * back on their own.
+   */
+  const distinctUrls =
+    online.status === "ready" ? new Set(online.categories.map((c) => c.url)).size : 0;
+  const linksAreDistinct = distinctUrls > 1;
 
   // The list can change under the selection when the feed resolves, so never
   // trust the stored value on its own — fall back to the first live option.
@@ -81,27 +104,50 @@ export function DonatePanel() {
             <div className="mt-7">
               <p className="text-sm leading-relaxed text-muted">
                 Give online through the masjid&rsquo;s secure MOHID portal.
+                {!linksAreDistinct && (
+                  <>
+                    {" "}
+                    You can choose your fund — {formatList(fundOptions)} — on
+                    the donation page.
+                  </>
+                )}
               </p>
-              <ul className="mt-4 space-y-3">
-                {online.categories.map((category) => (
-                  <li key={category.id}>
-                    <a
-                      href={category.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-center justify-between gap-4 rounded-xl border border-navy-800/15 px-5 py-4 text-navy-800 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-gold-500 hover:bg-gold-400/10"
-                    >
-                      <span className="min-w-0 truncate font-display text-lg">
-                        {category.name}
-                      </span>
-                      <ArrowUpRight
-                        aria-hidden
-                        className="h-4 w-4 shrink-0 text-muted transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-gold-600"
-                      />
-                    </a>
-                  </li>
-                ))}
-              </ul>
+
+              {linksAreDistinct ? (
+                <ul className="mt-4 space-y-3">
+                  {online.categories.map((category) => (
+                    <li key={category.id}>
+                      <a
+                        href={category.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center justify-between gap-4 rounded-xl border border-navy-800/15 px-5 py-4 text-navy-800 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-gold-500 hover:bg-gold-400/10"
+                      >
+                        <span className="min-w-0 truncate font-display text-lg">
+                          {category.name}
+                        </span>
+                        <ArrowUpRight
+                          aria-hidden
+                          className="h-4 w-4 shrink-0 text-muted transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-gold-600"
+                        />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <a
+                  href={online.categories[0].url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group mt-4 flex items-center justify-center gap-2.5 rounded-xl bg-navy-800 px-6 py-4 font-sans text-sm font-medium tracking-wide text-sand-50 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-navy-700 hover:shadow-lg hover:shadow-navy-900/15 active:scale-[0.98]"
+                >
+                  Give online
+                  <ArrowUpRight
+                    aria-hidden
+                    className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                  />
+                </a>
+              )}
 
               <div className="mt-8 flex items-center gap-4">
                 <span className="h-px flex-1 bg-navy-800/10" />
