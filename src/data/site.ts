@@ -55,14 +55,27 @@ export const donations = {
     "https://us.mohid.co/ky/louisville/masjidbilalsouthside/masjid/widget/api/index/?m=websiteintegration/json",
 
   /**
-   * Methods not yet available.
+   * The masjid's hosted donation page.
    *
-   * Only listed when online giving is unavailable — claiming "card coming
-   * soon" directly beneath a working online donation button reads as an error.
-   * Whether MOHID's hosted page accepts Apple Pay is NOT confirmed, so this
-   * makes no claim either way.
+   * The same URL normally arrives from the MOHID feed above, but it is pinned
+   * here as well so the Give online button does NOT depend on that feed being
+   * reachable. If MOHID's widget API is slow or down, the donate page still
+   * has a working way to give; only the fund NAMES come from the feed.
    */
-  comingSoon: ["Credit / debit card", "Apple Pay", "Bank transfer (ACH)"],
+  onlineUrl:
+    "https://us.mohid.co/ky/louisville/masjidbilalsouthside/masjid/online/donation",
+
+  /**
+   * Card types the hosted donation page accepts, confirmed by the masjid.
+   *
+   * Rendered as plain text — no card-brand logos, which are trademarks and
+   * would need their respective brand guidelines followed.
+   *
+   * NOT listed, because they are unconfirmed: Apple Pay, Google Pay, PayPal,
+   * and ACH bank transfer. Do not add any of them here on assumption; a
+   * payment method advertised but not offered sends a donor to a dead end.
+   */
+  acceptedCards: "Debit and credit cards, including American Express",
   /**
    * NEEDS-CONFIRMATION: do not advertise tax-deductible receipts until the
    * masjid's 501(c)(3) determination letter and EIN are confirmed.
