@@ -13,11 +13,12 @@ import { useMohidTimes } from "@/lib/useMohidTimes";
 import { cn } from "@/lib/cn";
 import {
   hasIqamah,
-  iqamah,
+  iqamahRules,
   prayerConfig,
   prayerNames,
   type PrayerKey,
 } from "@/data/prayer";
+import { resolveIqamah } from "@/lib/iqamah";
 
 function params(): CalculationParameters {
   const p = CalculationMethod[prayerConfig.method]();
@@ -58,6 +59,28 @@ export function DailyPrayerTimes() {
   const published = feed.status === "ready" ? feed.data : null;
   const feedIqamah = published?.iqamah ?? {};
   const showIqamah = Object.keys(feedIqamah).length > 0 || hasIqamah();
+
+  /**
+   * The masjid's congregation time for one prayer.
+   *
+   * Needs `now` for the seasonal rules (whether daylight saving is in effect),
+   * so it yields nothing until the clock is known on the client — the same
+   * moment the adhan times themselves appear.
+   */
+  const adhanFor = (key: PrayerKey): string | null =>
+    published ? published.adhan[key] : times ? fmtTime(times[key]) : null;
+
+  const computedIqamah = (key: PrayerKey, adhanDisplay: string | null) => {
+    if (!now) return null;
+    const rule = iqamahRules[key];
+    // A pinned time may be required to fall before another prayer's adhan;
+    // hand that prayer's time over so the rule can check it.
+    const guard =
+      (rule.kind === "fixed" || rule.kind === "seasonal") && rule.mustPrecede
+        ? adhanFor(rule.mustPrecede)
+        : null;
+    return resolveIqamah(rule, adhanDisplay, now, prayerConfig.timeZone, guard);
+  };
 
   const { times, nextKey } = useMemo(() => {
     if (!now) return { times: null, nextKey: null };
@@ -114,6 +137,10 @@ export function DailyPrayerTimes() {
           <tbody>
             {prayerNames.map((p, i) => {
               const isNext = nextKey === p.key;
+              // The adhan exactly as shown, so an offset rule such as
+              // "15 minutes after the adhan" is measured against the time the
+              // visitor can actually see in the row.
+              const adhanDisplay = adhanFor(p.key);
               return (
                 <tr
                   key={p.key}
@@ -145,18 +172,14 @@ export function DailyPrayerTimes() {
                     className="px-6 py-6 font-display text-2xl text-navy-800 tabular-nums sm:px-8"
                     suppressHydrationWarning
                   >
-                    {published
-                      ? published.adhan[p.key]
-                      : times
-                        ? fmtTime(times[p.key])
-                        : "—"}
+                    {adhanDisplay ?? "—"}
                   </td>
                   {showIqamah && (
                     <td
                       className="px-6 py-6 font-display text-2xl text-crimson-700 tabular-nums sm:px-8"
                       suppressHydrationWarning
                     >
-                      {feedIqamah[p.key] ?? iqamah[p.key] ?? "—"}
+                      {feedIqamah[p.key] ?? computedIqamah(p.key, adhanDisplay) ?? "—"}
                     </td>
                   )}
                 </tr>

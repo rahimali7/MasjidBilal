@@ -64,6 +64,21 @@ export function DonatePanel() {
     online.status === "ready" ? new Set(online.categories.map((c) => c.url)).size : 0;
   const linksAreDistinct = distinctUrls > 1;
 
+  /**
+   * Where the single "Give online" button points.
+   *
+   * The feed's URL when it has answered, otherwise the one pinned in config.
+   * They are the same address today; the config value is what keeps the button
+   * working when the feed is not.
+   */
+  const onlineHref =
+    online.status === "ready" && !linksAreDistinct
+      ? online.categories[0].url
+      : donations.onlineUrl;
+
+  /** Fund names are only known once the feed answers. */
+  const showFundNames = online.status === "ready" && !linksAreDistinct;
+
   // The list can change under the selection when the feed resolves, so never
   // trust the stored value on its own — fall back to the first live option.
   const activeFund = fund !== null && fundOptions.includes(fund) ? fund : fundOptions[0];
@@ -89,75 +104,75 @@ export function DonatePanel() {
     <div className="rounded-2xl border border-navy-800/10 bg-white p-8 shadow-[0_1px_2px_rgba(0,30,66,0.04),0_24px_60px_-40px_rgba(0,30,66,0.45)] sm:p-10">
       <p className="eyebrow">Make a donation</p>
 
-      {/* Online giving, when the masjid's MOHID portal reports categories.
-          Rendered only once the feed has answered: nothing is shown while
-          loading or on failure, so a visitor never sees a dead donate button
-          or an empty section. */}
-      <AnimatePresence>
-        {online.status === "ready" && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="mt-7">
-              <p className="text-sm leading-relaxed text-muted">
-                Give online through the masjid&rsquo;s secure MOHID portal.
-                {!linksAreDistinct && (
-                  <>
-                    {" "}
-                    You can choose your fund — {formatList(fundOptions)} — on
-                    the donation page.
-                  </>
-                )}
-              </p>
+      {/* Online giving.
+          Always rendered, including before the feed answers and when it fails:
+          the donation page URL is pinned in config, so the button cannot
+          disappear because a third-party widget API is having a bad day. Only
+          the fund NAMES come from the feed, and they fade in once it answers. */}
+      <div className="mt-7">
+        <p className="text-sm leading-relaxed text-muted">
+          Give online through the masjid&rsquo;s secure MOHID portal.
+          <AnimatePresence>
+            {showFundNames && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {" "}
+                You can choose your fund — {formatList(fundOptions)} — on the
+                donation page.
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </p>
 
-              {linksAreDistinct ? (
-                <ul className="mt-4 space-y-3">
-                  {online.categories.map((category) => (
-                    <li key={category.id}>
-                      <a
-                        href={category.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group flex items-center justify-between gap-4 rounded-xl border border-navy-800/15 px-5 py-4 text-navy-800 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-gold-500 hover:bg-gold-400/10"
-                      >
-                        <span className="min-w-0 truncate font-display text-lg">
-                          {category.name}
-                        </span>
-                        <ArrowUpRight
-                          aria-hidden
-                          className="h-4 w-4 shrink-0 text-muted transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-gold-600"
-                        />
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
+        {linksAreDistinct && online.status === "ready" ? (
+          <ul className="mt-4 space-y-3">
+            {online.categories.map((category) => (
+              <li key={category.id}>
                 <a
-                  href={online.categories[0].url}
+                  href={category.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group mt-4 flex items-center justify-center gap-2.5 rounded-xl bg-navy-800 px-6 py-4 font-sans text-sm font-medium tracking-wide text-sand-50 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-navy-700 hover:shadow-lg hover:shadow-navy-900/15 active:scale-[0.98]"
+                  className="group flex items-center justify-between gap-4 rounded-xl border border-navy-800/15 px-5 py-4 text-navy-800 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-gold-500 hover:bg-gold-400/10"
                 >
-                  Give online
+                  <span className="min-w-0 truncate font-display text-lg">
+                    {category.name}
+                  </span>
                   <ArrowUpRight
                     aria-hidden
-                    className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                    className="h-4 w-4 shrink-0 text-muted transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-gold-600"
                   />
                 </a>
-              )}
-
-              <div className="mt-8 flex items-center gap-4">
-                <span className="h-px flex-1 bg-navy-800/10" />
-                <span className="eyebrow text-muted/70">or give by Zelle</span>
-                <span className="h-px flex-1 bg-navy-800/10" />
-              </div>
-            </div>
-          </motion.div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <a
+            href={onlineHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group mt-4 flex items-center justify-center gap-2.5 rounded-xl bg-navy-800 px-6 py-4 font-sans text-sm font-medium tracking-wide text-sand-50 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-navy-700 hover:shadow-lg hover:shadow-navy-900/15 active:scale-[0.98]"
+          >
+            Give online
+            <ArrowUpRight
+              aria-hidden
+              className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+            />
+          </a>
         )}
-      </AnimatePresence>
+
+        <p className="mt-3.5 text-xs leading-relaxed text-muted/80">
+          {donations.acceptedCards} accepted.
+        </p>
+
+        <div className="mt-8 flex items-center gap-4">
+          <span className="h-px flex-1 bg-navy-800/10" />
+          <span className="eyebrow text-muted/70">or give by Zelle</span>
+          <span className="h-px flex-1 bg-navy-800/10" />
+        </div>
+      </div>
 
       {/* Amount tiers */}
       <fieldset className="mt-7">
@@ -316,13 +331,11 @@ export function DonatePanel() {
       </div>
 
       <p className="mt-6 text-xs leading-relaxed text-muted">
+        {/* No "more methods coming soon" line any more: card giving is live
+            above, and every other method (Apple Pay, PayPal, ACH) is
+            unconfirmed, so promising them would be inventing a roadmap. */}
         Zelle transfers go directly between banks and are not reversible, so
         please double-check the number before sending.
-        {/* Only promise other methods when online giving is NOT on the page.
-            "Card coming soon" directly beneath a working online donation
-            button reads as a mistake. */}
-        {online.status !== "ready" &&
-          ` More payment options are coming soon: ${donations.comingSoon.join(", ")}.`}
       </p>
     </div>
   );

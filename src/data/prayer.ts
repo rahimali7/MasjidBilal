@@ -65,6 +65,8 @@ export const prayerConfig: {
   methodLabel: "ISNA",
 };
 
+import type { IqamahRule } from "@/lib/iqamah";
+
 export type PrayerKey = "fajr" | "dhuhr" | "asr" | "maghrib" | "isha";
 
 export const prayerNames: {
@@ -80,20 +82,65 @@ export const prayerNames: {
 ];
 
 /**
- * Congregation times set by the masjid. PLACEHOLDER — every value is null,
- * so the site shows a dash. Replace with real times, e.g. "6:15 AM".
+ * Congregation (iqamah) times, as the masjid sets them.
+ *
+ * These are RULES rather than a list of times, so nothing has to be retyped
+ * as the adhan drifts through the year. Three shapes are available — see
+ * `src/lib/iqamah.ts`:
+ *
+ *   offset   — a fixed number of minutes after the adhan
+ *   fixed    — the same clock time every day
+ *   seasonal — one clock time under daylight saving, another in winter
+ *
+ * To change a time, edit the value here; nothing else needs touching.
  */
-export const iqamah: Record<PrayerKey, string | null> = {
-  fajr: null,
-  dhuhr: null,
-  asr: null,
-  maghrib: null,
-  isha: null,
+export const iqamahRules: Record<PrayerKey, IqamahRule> = {
+  /** Always 20 minutes after the adhan. */
+  fajr: { kind: "offset", minutes: 20 },
+
+  /**
+   * A fixed time that switches with the season, NOT an offset.
+   *
+   * The masjid gave two examples: adhan around 1:40 pm with iqamah at 2:00 pm,
+   * and adhan around 12:42 pm in winter with iqamah at 1:00 pm. Those are the
+   * summer and winter Dhuhr adhans for Louisville, so the underlying rule is a
+   * fixed congregation time per season. Confirmed with the masjid.
+   *
+   * Keyed off the time zone's real daylight-saving offset rather than the
+   * adhan minute: the calculated adhan drifts a minute or two either way, so
+   * matching "exactly 1:40 pm" would almost never fire.
+   */
+  dhuhr: { kind: "seasonal", daylightSaving: "2:00 PM", standard: "1:00 PM" },
+
+  /**
+   * Currently pinned to 5:30 PM by the masjid rather than following the adhan.
+   * EDIT THE TIME when the season turns.
+   *
+   * `mustPrecede` is a safety net, not a schedule. From roughly 16 November to
+   * 27 December in Louisville, Maghrib arrives at 5:30 PM or earlier, so a
+   * pinned 5:30 PM Asr would sit at or after sunset — outside Asr's window,
+   * and not a valid time to pray it. On those days the site falls back to the
+   * masjid's own underlying rule (adhan + 15) rather than publishing a time
+   * nobody can pray at. If the pinned time is updated before then, the
+   * fallback never fires.
+   */
+  asr: {
+    kind: "fixed",
+    time: "5:30 PM",
+    mustPrecede: "maghrib",
+    fallback: { kind: "offset", minutes: 15 },
+  },
+
+  /** Always 6 minutes after the adhan. */
+  maghrib: { kind: "offset", minutes: 6 },
+
+  /** Always 10 minutes after the adhan. */
+  isha: { kind: "offset", minutes: 10 },
 };
 
-/** True once any iqamah time has been entered. */
+/** True while any prayer has a congregation time to show. */
 export function hasIqamah(): boolean {
-  return Object.values(iqamah).some(Boolean);
+  return Object.values(iqamahRules).some((rule) => rule.kind !== "none");
 }
 
 export type JumuahService = {
@@ -103,13 +150,24 @@ export type JumuahService = {
   prayer: string | null;
 };
 
-/** PLACEHOLDER — confirm how many khutbahs are held and at what time. */
+/**
+ * Friday congregation, as given by the masjid.
+ *
+ * Fixed times rather than rules: Jumu'ah replaces Dhuhr and is scheduled by
+ * the clock, so it does not move with the adhan.
+ *
+ * NEEDS-CONFIRMATION: an adhan time of 1:15 PM was mentioned before these
+ * times were corrected, which cannot sit between a 1:00 PM khutbah and a
+ * 1:45 PM prayer. It is deliberately NOT published until the masjid confirms
+ * it — a wrong Friday time is the one most likely to make someone miss the
+ * prayer entirely.
+ */
 export const jumuah: JumuahService[] = [
   {
     label: "Jumu'ah",
     location: "Masjid Bilal South Side",
-    khutbah: null,
-    prayer: null,
+    khutbah: "1:00 PM",
+    prayer: "1:45 PM",
   },
 ];
 
