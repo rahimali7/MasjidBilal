@@ -68,10 +68,22 @@ component code needs to be touched.
 | `verses.json` | Qur'anic verses used across the site |
 | `faq.ts` | Questions the assistant answers, and the FAQ page |
 
-### Prayer times (Masjidal)
+### Prayer times
 
-The masjid uses [Masjidal](https://masjidal.com). Their install is two parts,
-and only the first is done:
+Three sources, in order of precedence:
+
+1. **MOHID** — the masjid's own published feed, including iqamah times. Read
+   server-side by `/api/prayer-times` (a browser fetch would be blocked by
+   CORS) and cached for 15 minutes.
+2. **Calculated** — if MOHID does not answer or returns something the parser
+   does not recognise, times are computed with `adhan` for the masjid's
+   coordinates. Always correct, but without the masjid's iqamah.
+3. **Masjidal widget** — overrides everything when `embedHtml` is set.
+
+The MOHID parser rejects any response it cannot fully read rather than showing
+a partial or guessed time. See the note at the top of `src/lib/mohid.ts`.
+
+Masjidal remains available as an override:
 
 1. **Widget library** — already wired. `MasjidalWidget.tsx` loads
    `widgets.masjidal.com/timetable/v0/widget.js` on the prayer-times page

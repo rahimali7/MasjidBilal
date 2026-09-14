@@ -71,8 +71,11 @@ Then `npm run build` writes a complete site to `out/`.
 | **Netlify** | Free tier, GitHub integration, very similar to Vercel. |
 | **GitHub Pages** | Free, already where the code lives. Needs the static export above plus a small Actions workflow. |
 
-The trade-off with static export is that `next/image` optimization is turned
-off (`unoptimized: true`), so images are served at full size. That matters
+Two trade-offs with static export. `next/image` optimization is turned off
+(`unoptimized: true`), so images are served at full size. And the
+`/api/prayer-times` route cannot run, so the prayer page falls back to its
+calculated times instead of the masjid's published MOHID times — accurate,
+but without the masjid's own iqamah. That matters
 once real photography is added — not while the site uses the geometric
 placeholder panels.
 
