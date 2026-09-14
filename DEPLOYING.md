@@ -196,6 +196,15 @@ Vercel rebuilds automatically. The live site updates in roughly a minute.
 | The history timeline | `src/data/timeline.ts` |
 | Qur'an verses used on the site | `src/data/verses.json` |
 
+**Donation funds are the exception — do not edit them here.** They are read
+live from MOHID. Add, rename or remove a donation category in your MOHID
+account and the website follows within about fifteen minutes, with no code
+change and no deployment. That also means a fund removed in MOHID disappears
+from the site, which is the intended behaviour.
+
+If MOHID is unreachable, the donate page quietly falls back to the Zelle
+instructions rather than showing an error, so giving never breaks.
+
 ### Example: adding an event
 
 In `src/data/events.ts`, copy an existing block and change the values:

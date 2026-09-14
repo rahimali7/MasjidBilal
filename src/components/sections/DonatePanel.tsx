@@ -2,21 +2,25 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { ArrowUpRight } from "lucide-react";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { Diamond } from "@/components/ui/StarFrame";
 import { donations } from "@/data/site";
+import { useMohidDonations } from "@/lib/useMohidDonations";
 import { cn } from "@/lib/cn";
 
 const TIERS = [25, 50, 100, 250, 500, 1000];
 
-const FUNDS = [
-  "General Fund",
-  "Zakat",
-  "Sadaqah",
-  "Masjid Maintenance",
-  "Education & Qur'an School",
-  "Youth Programs",
-] as const;
+/**
+ * Designations offered when MOHID's category feed is unavailable.
+ *
+ * Deliberately generic. An earlier version of this list named specific funds
+ * ("Masjid Maintenance", "Youth Programs", …) that were placeholders rather
+ * than the masjid's actual funds — MOHID reports three categories, not six.
+ * When the feed answers, its categories replace this entirely; this is only
+ * the fallback, so it names nothing the masjid would not recognise.
+ */
+const FALLBACK_FUNDS = ["General donation", "Zakat", "Sadaqah"] as const;
 
 /**
  * Builds a Zelle payment instruction from the visitor's selections.
@@ -29,7 +33,17 @@ export function DonatePanel() {
   const [amount, setAmount] = useState<number | null>(null);
   const [custom, setCustom] = useState("");
   const [frequency, setFrequency] = useState<"one-time" | "monthly">("one-time");
-  const [fund, setFund] = useState<string>(FUNDS[0]);
+  const [fund, setFund] = useState<string | null>(null);
+
+  const online = useMohidDonations();
+
+  // The masjid's own categories when MOHID answers, generic ones otherwise.
+  const fundOptions: readonly string[] =
+    online.status === "ready" ? online.categories.map((c) => c.name) : FALLBACK_FUNDS;
+
+  // The list can change under the selection when the feed resolves, so never
+  // trust the stored value on its own — fall back to the first live option.
+  const activeFund = fund !== null && fundOptions.includes(fund) ? fund : fundOptions[0];
 
   const customValue = Number.parseFloat(custom);
   const effective =
@@ -46,11 +60,58 @@ export function DonatePanel() {
       })
     : null;
 
-  const memo = `${fund}${frequency === "monthly" ? " — monthly" : ""}`;
+  const memo = `${activeFund}${frequency === "monthly" ? " — monthly" : ""}`;
 
   return (
     <div className="rounded-2xl border border-navy-800/10 bg-white p-8 shadow-[0_1px_2px_rgba(0,30,66,0.04),0_24px_60px_-40px_rgba(0,30,66,0.45)] sm:p-10">
       <p className="eyebrow">Make a donation</p>
+
+      {/* Online giving, when the masjid's MOHID portal reports categories.
+          Rendered only once the feed has answered: nothing is shown while
+          loading or on failure, so a visitor never sees a dead donate button
+          or an empty section. */}
+      <AnimatePresence>
+        {online.status === "ready" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="mt-7">
+              <p className="text-sm leading-relaxed text-muted">
+                Give online through the masjid&rsquo;s secure MOHID portal.
+              </p>
+              <ul className="mt-4 space-y-3">
+                {online.categories.map((category) => (
+                  <li key={category.id}>
+                    <a
+                      href={category.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-center justify-between gap-4 rounded-xl border border-navy-800/15 px-5 py-4 text-navy-800 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-gold-500 hover:bg-gold-400/10"
+                    >
+                      <span className="min-w-0 truncate font-display text-lg">
+                        {category.name}
+                      </span>
+                      <ArrowUpRight
+                        aria-hidden
+                        className="h-4 w-4 shrink-0 text-muted transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-gold-600"
+                      />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-8 flex items-center gap-4">
+                <span className="h-px flex-1 bg-navy-800/10" />
+                <span className="eyebrow text-muted/70">or give by Zelle</span>
+                <span className="h-px flex-1 bg-navy-800/10" />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Amount tiers */}
       <fieldset className="mt-7">
@@ -143,13 +204,13 @@ export function DonatePanel() {
         </label>
         <select
           id="fund"
-          value={fund}
+          value={activeFund}
           onChange={(e) => setFund(e.target.value)}
           // min-w-0 matters: a <select> is sized by its longest option, which
           // would otherwise force the whole grid wider than a small viewport.
           className="mt-3 h-14 w-full min-w-0 rounded-xl border border-navy-800/15 bg-transparent px-5 text-navy-800 outline-none transition-colors focus:border-gold-500"
         >
-          {FUNDS.map((f) => (
+          {fundOptions.map((f) => (
             <option key={f} value={f}>
               {f}
             </option>
@@ -210,8 +271,12 @@ export function DonatePanel() {
 
       <p className="mt-6 text-xs leading-relaxed text-muted">
         Zelle transfers go directly between banks and are not reversible, so
-        please double-check the number before sending. More payment options are
-        coming soon: {donations.comingSoon.join(", ")}.
+        please double-check the number before sending.
+        {/* Only promise other methods when online giving is NOT on the page.
+            "Card coming soon" directly beneath a working online donation
+            button reads as a mistake. */}
+        {online.status !== "ready" &&
+          ` More payment options are coming soon: ${donations.comingSoon.join(", ")}.`}
       </p>
     </div>
   );

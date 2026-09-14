@@ -43,7 +43,25 @@ export const donations = {
     raw: "5024579902",
     recipientName: "Masjid Bilal Islamic Center",
   },
-  /** Additional processors will be added once accounts are set up. */
+  /**
+   * MOHID's website-integration feed, which carries the masjid's donation
+   * categories and the hosted donation link for each.
+   *
+   * Read server-side by /api/donations. Categories are NOT hard-coded here on
+   * purpose: change a fund in MOHID and the website follows, with no code
+   * change and no second place to keep in step.
+   */
+  integrationUrl:
+    "https://us.mohid.co/ky/louisville/masjidbilalsouthside/masjid/widget/api/index/?m=websiteintegration/json",
+
+  /**
+   * Methods not yet available.
+   *
+   * Only listed when online giving is unavailable — claiming "card coming
+   * soon" directly beneath a working online donation button reads as an error.
+   * Whether MOHID's hosted page accepts Apple Pay is NOT confirmed, so this
+   * makes no claim either way.
+   */
   comingSoon: ["Credit / debit card", "Apple Pay", "Bank transfer (ACH)"],
   /**
    * NEEDS-CONFIRMATION: do not advertise tax-deductible receipts until the
