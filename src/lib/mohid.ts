@@ -144,6 +144,74 @@ function collect(
   }
 }
 
+/** Reduce a value to its character classes: digits to 9, letters to a. */
+function maskValue(value: string): string {
+  const clipped = value.length > 40 ? `${value.slice(0, 40)}…` : value;
+  return clipped.replace(/[0-9]/g, "9").replace(/[A-Za-z]/g, "a");
+}
+
+function walkShape(
+  node: unknown,
+  path: string,
+  depth: number,
+  out: string[],
+  max: number,
+): void {
+  if (out.length >= max) return;
+  const pad = "  ".repeat(depth);
+
+  if (Array.isArray(node)) {
+    out.push(`${pad}${path}: array[${node.length}]`);
+    // One element is enough to show the row shape.
+    if (node.length > 0) walkShape(node[0], `${path}[0]`, depth + 1, out, max);
+    return;
+  }
+
+  if (node !== null && typeof node === "object") {
+    const entries = Object.entries(node as Record<string, unknown>);
+    out.push(`${pad}${path}: object{${entries.length}}`);
+    for (const [key, value] of entries) walkShape(value, key, depth + 1, out, max);
+    return;
+  }
+
+  if (typeof node === "string") {
+    out.push(`${pad}${path}: string "${maskValue(node)}"`);
+    return;
+  }
+
+  out.push(`${pad}${path}: ${node === null ? "null" : typeof node}`);
+}
+
+/**
+ * A masked, structural description of a payload, for diagnosing a feed whose
+ * shape we did not anticipate.
+ *
+ * Key names are shown in full — they are what a mapping is written against —
+ * but every VALUE is reduced to its character classes, so the schema and the
+ * value formats are legible without reproducing the contents. That matters
+ * because these feeds may carry identifiers we should not copy around.
+ *
+ * Intended for the server log only. Never return this to the browser.
+ */
+export function describeShape(payload: unknown, maxLines = 60): string {
+  let root = payload;
+
+  for (let attempt = 0; attempt < 2 && typeof root === "string"; attempt += 1) {
+    const text = root;
+    try {
+      root = JSON.parse(text) as unknown;
+    } catch {
+      const sample = text.slice(0, 200).replace(/\s+/g, " ");
+      return `not JSON (${text.length} chars): "${maskValue(sample)}"`;
+    }
+  }
+
+  const lines: string[] = [];
+  walkShape(root, "$", 0, lines, maxLines);
+  if (lines.length >= maxLines) lines.push("  … truncated");
+  return lines.join("\n");
+}
+
 const REQUIRED: PrayerKey[] = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
 
 /**

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseMohid } from "@/lib/mohid";
+import { describeShape, parseMohid } from "@/lib/mohid";
 import { mohid } from "@/data/prayer";
 
 /**
@@ -33,8 +33,15 @@ export async function GET() {
 
     // The feed may label itself text/plain; read as text and let the parser
     // deal with it rather than trusting the content type.
-    const parsed = parseMohid(await response.text());
+    const body = await response.text();
+    const parsed = parseMohid(body);
     if (!parsed) {
+      // Log the SHAPE, with values masked, so a feed we failed to read can be
+      // diagnosed from the server log. The response body stays deliberately
+      // terse — nothing about the upstream payload is exposed to the browser.
+      console.warn(
+        `[prayer-times] MOHID responded but no mapping matched. Shape:\n${describeShape(body)}`,
+      );
       return NextResponse.json({ ok: false, reason: "unrecognised-shape" });
     }
 
