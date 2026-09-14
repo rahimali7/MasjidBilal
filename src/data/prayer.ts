@@ -124,6 +124,29 @@ export const jumuah: JumuahService[] = [
  * from this repository file, which only developers can edit — never wire it
  * to user input, request data, or a URL parameter.
  */
+export const mohid = {
+  /**
+   * The masjid's MOHID feed. This is the AUTHORITATIVE source: it carries the
+   * times the masjid itself publishes, including iqamah, so when it responds
+   * it takes precedence over the calculated times below.
+   *
+   * Read server-side by /api/prayer-times — never fetched straight from the
+   * browser, which CORS would usually block.
+   */
+  feedUrl:
+    "https://us.mohid.co/ky/louisville/masjidbilalsouthside/masjid/widget/api/index/?m=vfrlist/json",
+} as const;
+
+/**
+ * Optional Masjidal widget override.
+ *
+ * Publish a widget in the Masjidal platform, press "Embed", and paste the
+ * markup into `embedHtml`. When set, it replaces everything else on the page.
+ *
+ * `embedHtml` is injected as raw HTML. That is safe only because it comes
+ * from this repository file, which only developers can edit — never wire it
+ * to user input, request data, or a URL parameter.
+ */
 export const masjidal = {
   scriptSrc: "https://widgets.masjidal.com/timetable/v0/widget.js",
   embedHtml: null as string | null,

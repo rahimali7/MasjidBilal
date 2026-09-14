@@ -9,6 +9,7 @@ import {
   type CalculationParameters,
 } from "adhan";
 import { useNow } from "@/lib/useNow";
+import { useMohidTimes } from "@/lib/useMohidTimes";
 import { cn } from "@/lib/cn";
 import {
   hasIqamah,
@@ -50,7 +51,13 @@ function fmtDate(d: Date): string {
  */
 export function DailyPrayerTimes() {
   const now = useNow();
-  const showIqamah = hasIqamah();
+  const feed = useMohidTimes();
+
+  // The masjid's own published times win when the feed answers; the
+  // calculated times are the fallback, so the table is never empty.
+  const published = feed.status === "ready" ? feed.data : null;
+  const feedIqamah = published?.iqamah ?? {};
+  const showIqamah = Object.keys(feedIqamah).length > 0 || hasIqamah();
 
   const { times, nextKey } = useMemo(() => {
     if (!now) return { times: null, nextKey: null };
@@ -138,11 +145,18 @@ export function DailyPrayerTimes() {
                     className="px-6 py-6 font-display text-2xl text-navy-800 tabular-nums sm:px-8"
                     suppressHydrationWarning
                   >
-                    {times ? fmtTime(times[p.key]) : "—"}
+                    {published
+                      ? published.adhan[p.key]
+                      : times
+                        ? fmtTime(times[p.key])
+                        : "—"}
                   </td>
                   {showIqamah && (
-                    <td className="px-6 py-6 font-display text-2xl text-crimson-700 tabular-nums sm:px-8">
-                      {iqamah[p.key] ?? "—"}
+                    <td
+                      className="px-6 py-6 font-display text-2xl text-crimson-700 tabular-nums sm:px-8"
+                      suppressHydrationWarning
+                    >
+                      {feedIqamah[p.key] ?? iqamah[p.key] ?? "—"}
                     </td>
                   )}
                 </tr>
@@ -153,11 +167,17 @@ export function DailyPrayerTimes() {
       </div>
 
       <div className="mt-6 space-y-2 text-sm text-muted">
-        <p>
-          Adhan times are calculated for the masjid&rsquo;s location using the{" "}
-          {prayerConfig.methodLabel} method
-          {prayerConfig.madhab === "hanafi" ? " (Hanafi Asr)" : ""}, and update
-          automatically each day.
+        <p suppressHydrationWarning>
+          {published ? (
+            <>Times published by the masjid, updated automatically.</>
+          ) : (
+            <>
+              Adhan times are calculated for the masjid&rsquo;s location using
+              the {prayerConfig.methodLabel} method
+              {prayerConfig.madhab === "hanafi" ? " (Hanafi Asr)" : ""}, and
+              update automatically each day.
+            </>
+          )}
         </p>
         {!showIqamah && (
           <p>
